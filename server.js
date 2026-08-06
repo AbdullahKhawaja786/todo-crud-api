@@ -7,11 +7,26 @@ const PORT = 3000;
 app.use(express.json());
 
 // our "database" — just a list in memory
-let tasks = [
-  { id: 1, title: "Buy milk", done: false },
-  { id: 2, title: "Walk the dog", done: true },
-  { id: 3, title: "Finish assignment", done: false }
-];
+const Database = require('better-sqlite3');
+const db = new Database('tasks.db');
+
+// create the table if it doesn't already exist
+db.exec(`
+  CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0
+  )
+`);
+
+// seed 3 example tasks, but only if the table is empty
+const count = db.prepare('SELECT COUNT(*) AS count FROM tasks').get().count;
+if (count === 0) {
+  const insert = db.prepare('INSERT INTO tasks (title, done) VALUES (?, ?)');
+  insert.run('Buy milk', 0);
+  insert.run('Walk the dog', 1);
+  insert.run('Finish assignment', 0);
+}
 
 // Stage 1 — front door endpoints
 app.get('/', (req, res) => {

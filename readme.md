@@ -1,54 +1,56 @@
-Here's the final version with your real output swapped in:
+# Task API (SQLite version)
 
-markdown
-# Task API
+A REST API for managing a to-do list, backed by a real SQLite database instead of in-memory storage. Full CRUD (Create, Read, Update, Delete), with data that survives server restarts.
 
-A simple to-do list CRUD API built with Express, storing tasks in memory.
+## Why SQLite
 
-## How to run
+SQLite was chosen because it needs no separate server or installation. The whole database is a single file (`tasks.db`) that gets created automatically the first time the app runs. That makes it a good fit for a small project like this, while still teaching real SQL and real persistence.
 
-1. Clone this repo
-2. Run `npm install`
-3. Run `node server.js`
-4. Server starts on `http://localhost:3000`
+## Where the database lives
+
+`tasks.db` sits in the project root and is created automatically on first run. It's git-ignored, so each fresh clone of this repo starts with a clean, auto-seeded database.
+
+## How to run it
+
+```bash
+npm install
+node server.js
+```
+
+The server starts on `http://localhost:3000`. On first run, it automatically creates `tasks.db`, creates the `tasks` table, and seeds 3 example tasks.
 
 ## Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/` | API info |
-| GET | `/health` | Health check |
-| GET | `/tasks` | Get all tasks |
-| GET | `/tasks/:id` | Get one task |
-| POST | `/tasks` | Create a task |
-| PUT | `/tasks/:id` | Update a task |
-| DELETE | `/tasks/:id` | Delete a task |
+| GET | / | API info |
+| GET | /health | Health check |
+| GET | /tasks | List all tasks |
+| GET | /tasks/:id | Get one task |
+| POST | /tasks | Create a task |
+| PUT | /tasks/:id | Update a task |
+| DELETE | /tasks/:id | Delete a task |
 
 ## Example request
 
-curl.exe -i http://localhost:3000/tasks
-
+```bash
+curl -i -X POST http://localhost:3000/tasks -H "Content-Type: application/json" -d '{"title":"Buy milk"}'
+```
 
 Response:
 
-HTTP/1.1 200 OK
-X-Powered-By: Express
-Content-Type: application/json; charset=utf-8
-Content-Length: 186
-ETag: W/"ba-T9IU6GynhzXZWh5/hcTMF/AYJFc"
-Date: Tue, 04 Aug 2026 22:28:49 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
+```json
+{"id":8,"title":"Buy milk","done":0}
+```
 
-[{"id":1,"title":"Buy milk","done":false},{"id":2,"title":"Walk the dog","done":true},{"id":3,"title":"Finish assignment","done":false},{"id":4,"title":"Test from Swagger","done":false}]
+## SQL query I ran by hand
 
+```sql
+DELETE FROM tasks WHERE done = 1;
+```
 
-## Swagger UI
+I ran this in DB Browser for SQLite after marking every task done with `UPDATE tasks SET done = 1;`. It deleted all 3 tasks, and the change appeared instantly through the API with no server restart needed, since the API and DB Browser both read the exact same `tasks.db` file.
 
-Interactive API docs available at `http://localhost:3000/docs` once the server is running.
+## What changed from Assignment 1
 
-![Swagger UI](swagger-screenshot.png)
-
-## Notes
-
-Data is stored in memory only — restarting the server resets tasks back to the 3 example tasks. This is intentional for this stage of the project; a database will be added in a future assignment.
+The API's endpoints, request bodies, and response shapes are all identical to Assignment 1. Only the storage layer changed, from an in-memory array to a real SQLite database. That's the core idea of this assignment: the API is the promise, the database is just where the promise gets kept.

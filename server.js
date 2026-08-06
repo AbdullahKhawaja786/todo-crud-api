@@ -72,7 +72,7 @@ app.post('/tasks', (req, res) => {
 
 // Stage 4 — Update & Delete
 app.put('/tasks/:id', (req, res) => {
-  const task = tasks.find(t => t.id === parseInt(req.params.id));
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
   if (!task) {
     return res.status(404).json({ error: `Task ${req.params.id} not found` });
   }
@@ -83,19 +83,23 @@ app.put('/tasks/:id', (req, res) => {
     return res.status(400).json({ error: "Title cannot be empty" });
   }
 
-  if (title !== undefined) task.title = title;
-  if (done !== undefined) task.done = done;
+  const newTitle = title !== undefined ? title : task.title;
+  const newDone = done !== undefined ? (done ? 1 : 0) : task.done;
 
-  res.json(task);
+  db.prepare('UPDATE tasks SET title = ?, done = ? WHERE id = ?')
+    .run(newTitle, newDone, req.params.id);
+
+  const updatedTask = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
+  res.json(updatedTask);
 });
 
 app.delete('/tasks/:id', (req, res) => {
-  const index = tasks.findIndex(t => t.id === parseInt(req.params.id));
-  if (index === -1) {
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
+  if (!task) {
     return res.status(404).json({ error: `Task ${req.params.id} not found` });
   }
 
-  tasks.splice(index, 1);
+  db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id);
   res.status(204).send();
 });
 app.use('/docs', swaggerUi.serve);

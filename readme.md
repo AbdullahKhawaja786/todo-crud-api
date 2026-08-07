@@ -1,23 +1,35 @@
-# Task API (SQLite version)
+# Task API (Dockerized Postgres version)
 
-A REST API for managing a to-do list, backed by a real SQLite database instead of in-memory storage. Full CRUD (Create, Read, Update, Delete), with data that survives server restarts.
+A REST API for managing a to-do list, now running against a real PostgreSQL database inside Docker, with the whole stack (app + database) starting from a single command.
 
-## Why SQLite
+## Storage journey
 
-SQLite was chosen because it needs no separate server or installation. The whole database is a single file (`tasks.db`) that gets created automatically the first time the app runs. That makes it a good fit for a small project like this, while still teaching real SQL and real persistence.
+- **Assignment 1**: tasks stored in memory, gone on every restart
+- **Assignment 2**: tasks stored in a SQLite file (`tasks.db`)
+- **Assignment 3 (this one)**: tasks stored in a containerized PostgreSQL database
 
-## Where the database lives
-
-`tasks.db` sits in the project root and is created automatically on first run. It's git-ignored, so each fresh clone of this repo starts with a clean, auto-seeded database.
+The API's endpoints, request bodies, and response shapes never changed across any of these. Only the storage layer changed each time, proving that storage really is just an implementation detail behind a stable API.
 
 ## How to run it
 
-```bash
-npm install
-node server.js
-```
+1. Copy `.env.example` to `.env` (only needed for connecting manually outside Docker; Compose sets its own connection string internally)
+2. Run:
 
-The server starts on `http://localhost:3000`. On first run, it automatically creates `tasks.db`, creates the `tasks` table, and seeds 3 example tasks.
+\`\`\`bash
+docker compose up
+\`\`\`
+
+This starts both the app and a Postgres database together. The app listens on `http://localhost:3000`. The database table is created automatically, and 3 example tasks are seeded only on the first run.
+
+## Environment variables
+
+See `.env.example` for the required variable:
+
+\`\`\`
+DATABASE_URL=postgres://postgres:password_here@localhost:5432/tasks
+\`\`\`
+
+When running via Docker Compose, this is set automatically in `compose.yaml` and does not need to be set manually.
 
 ## Endpoints
 
@@ -33,24 +45,22 @@ The server starts on `http://localhost:3000`. On first run, it automatically cre
 
 ## Example request
 
-```bash
+\`\`\`bash
 curl -i -X POST http://localhost:3000/tasks -H "Content-Type: application/json" -d '{"title":"Buy milk"}'
-```
+\`\`\`
 
 Response:
 
-```json
-{"id":8,"title":"Buy milk","done":0}
-```
+\`\`\`json
+{"id":4,"title":"Buy milk","done":false}
+\`\`\`
 
-## SQL query I ran by hand
+## Persistence proof
 
-```sql
-DELETE FROM tasks WHERE done = 1;
-```
+I created a task, then ran a full \`docker compose down\` followed by \`docker compose up\` (stopping and restarting both the app and database containers). The task was still present afterward, confirmed via \`GET /tasks\`, because the named volume \`taskdata\` keeps Postgres's data outside the container's own lifecycle.
 
-I ran this in DB Browser for SQLite after marking every task done with `UPDATE tasks SET done = 1;`. It deleted all 3 tasks, and the change appeared instantly through the API with no server restart needed, since the API and DB Browser both read the exact same `tasks.db` file.
+## Notes on the build
 
-## What changed from Assignment 1
-
-The API's endpoints, request bodies, and response shapes are all identical to Assignment 1. Only the storage layer changed, from an in-memory array to a real SQLite database. That's the core idea of this assignment: the API is the promise, the database is just where the promise gets kept.
+- I removed the \`better-sqlite3\` dependency from Assignment 2, since it required native compilation (Python + build tools) that isn't available in the minimal Docker image, and it was no longer used once the app moved to Postgres.
+- I mounted the Postgres volume at \`/var/lib/postgresql\` rather than the older \`/var/lib/postgresql/data\`, since Postgres 18's official image changed its expected data directory structure.
+- \`.env\` is excluded from the Docker image via \`.dockerignore\`, so secrets never get baked into the built image, even though Compose still needs \`.env\` values for local, non-containerized runs.
